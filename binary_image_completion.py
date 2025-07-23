@@ -14,43 +14,50 @@ HIDDEN_UNITS = 512
 EPOCHS = 50
 BATCH_SIZE = 8
 LEARNING_RATE = 1e-3
-MASK_PIXELS = 80  # Number of pixels revealed in each input
+MASK_PIXELS = 100  # Number of pixels revealed in each input
+SEGMENT_WIDTH = 2.0  # Width of sine segment for each sample
 
 
 def generate_dataset(num_samples: int):
-    """Generate datasets from a fixed sine-wave image.
+    """Generate sine-wave datasets composed of shifted segments.
 
-    A single sine curve with a constant amplitude is drawn once. For each
-    sample, 80 pixels from this curve image are revealed while the rest are
-    set to ``0`` in the input. The full image is used as the training target.
+    For each sample a sine curve with a constant amplitude is drawn over a
+    window of width ``SEGMENT_WIDTH``. The start of this window is chosen at
+    random so that each sample contains a different portion of ``sin(x)``. In
+    the input, ``MASK_PIXELS`` pixels from the generated curve image are
+    revealed while the rest are set to ``0``. The full segment image is used as
+    the training target.
     """
 
-    # Build the fixed sine-wave image
-    base_image = np.zeros((IMAGE_SIZE, IMAGE_SIZE), dtype=np.float32)
-    x_vals = np.linspace(0.0, np.pi, IMAGE_SIZE)
+    inputs = np.zeros((num_samples, NUM_PIXELS), dtype=np.float32)
+    targets = np.zeros((num_samples, NUM_PIXELS), dtype=np.float32)
+
     amplitude = IMAGE_SIZE * 0.4
     center = IMAGE_SIZE / 2.0
-    for x_pixel, x in enumerate(x_vals):
-        y = amplitude * np.sin(x)
-        y_pos = center - y
-        lower = int(np.floor(y_pos))
-        upper = int(np.ceil(y_pos))
-        if 0 <= lower < IMAGE_SIZE:
-            base_image[lower, x_pixel] = 1.0
-        if 0 <= upper < IMAGE_SIZE:
-            base_image[upper, x_pixel] = 1.0
 
-    flat_image = base_image.reshape(NUM_PIXELS)
-
-    # Generate inputs by revealing a random subset of pixels
-    inputs = np.zeros((num_samples, NUM_PIXELS), dtype=np.float32)
     for i in range(num_samples):
+        start = np.random.uniform(0.0, 2 * np.pi - SEGMENT_WIDTH)
+        x_vals = np.linspace(start, start + SEGMENT_WIDTH, IMAGE_SIZE)
+
+        image = np.zeros((IMAGE_SIZE, IMAGE_SIZE), dtype=np.float32)
+        for x_pixel, x in enumerate(x_vals):
+            y = amplitude * np.sin(x)
+            y_pos = center - y
+            lower = int(np.floor(y_pos))
+            upper = int(np.ceil(y_pos))
+            if 0 <= lower < IMAGE_SIZE:
+                image[lower, x_pixel] = 1.0
+            if 0 <= upper < IMAGE_SIZE:
+                image[upper, x_pixel] = 1.0
+
+        flat_image = image.reshape(NUM_PIXELS)
+        targets[i] = flat_image
+
         mask = np.zeros(NUM_PIXELS, dtype=np.float32)
         indices = np.random.choice(NUM_PIXELS, MASK_PIXELS, replace=False)
         mask[indices] = 1.0
         inputs[i] = flat_image * mask
 
-    targets = np.repeat(flat_image[None, :], num_samples, axis=0)
     return inputs, targets
 
 
