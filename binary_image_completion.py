@@ -14,8 +14,8 @@ HIDDEN_UNITS = 512
 EPOCHS = 50
 BATCH_SIZE = 8
 LEARNING_RATE = 1e-3
-MASK_PIXELS = 100  # Number of pixels revealed in each input
-SEGMENT_WIDTH = 2.0  # Width of sine segment for each sample
+MASK_PIXELS = 80  # Number of white pixels revealed in each input
+SEGMENT_WIDTH = np.pi  # Width of sine segment for each sample
 
 
 def generate_dataset(num_samples: int):
@@ -23,10 +23,10 @@ def generate_dataset(num_samples: int):
 
     For each sample a sine curve with a constant amplitude is drawn over a
     window of width ``SEGMENT_WIDTH``. The start of this window is chosen at
-    random so that each sample contains a different portion of ``sin(x)``. In
-    the input, ``MASK_PIXELS`` pixels from the generated curve image are
-    revealed while the rest are set to ``0``. The full segment image is used as
-    the training target.
+    random so that each sample contains a different portion of ``sin(x)``.
+    ``MASK_PIXELS`` white pixels from the generated curve image are then
+    revealed while the rest are set to ``0`` in the input. The full segment
+    image is used as the training target.
     """
 
     inputs = np.zeros((num_samples, NUM_PIXELS), dtype=np.float32)
@@ -54,8 +54,12 @@ def generate_dataset(num_samples: int):
         targets[i] = flat_image
 
         mask = np.zeros(NUM_PIXELS, dtype=np.float32)
-        indices = np.random.choice(NUM_PIXELS, MASK_PIXELS, replace=False)
-        mask[indices] = 1.0
+        white_indices = np.flatnonzero(flat_image)
+        if len(white_indices) >= MASK_PIXELS:
+            reveal_indices = np.random.choice(white_indices, MASK_PIXELS, replace=False)
+        else:
+            reveal_indices = white_indices
+        mask[reveal_indices] = 1.0
         inputs[i] = flat_image * mask
 
     return inputs, targets
