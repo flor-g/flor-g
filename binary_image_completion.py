@@ -121,7 +121,7 @@ def visualize_results(model, input_image, target_image):
 
 
 if __name__ == "__main__":
-    # Generate synthetic dataset
+    # Generate sine-wave dataset.
     inputs, targets = generate_dataset(NUM_SAMPLES)
 
     # Convert to PyTorch tensors
