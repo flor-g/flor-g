@@ -14,45 +14,44 @@ HIDDEN_UNITS = 512
 EPOCHS = 50
 BATCH_SIZE = 8
 LEARNING_RATE = 1e-3
-MASK_FRACTION = 0.3  # Fraction of pixels to mask in input
+MASK_PIXELS = 80  # Number of pixels revealed in each input
 
 
 def generate_dataset(num_samples: int):
-    """Generate sine-wave binary images and corresponding masked inputs.
+    """Generate datasets from a fixed sine-wave image.
 
-    Each sample contains a single sine curve drawn on a blank image. The curve
-    is defined by randomly chosen vertical amplitude and horizontal scaling
-    factors. Pixels on or nearest to the curve are set to ``1``. A fraction of
-    pixels specified by ``MASK_FRACTION`` are then removed from the image to
-    produce the masked input.
+    A single sine curve with a constant amplitude is drawn once. For each
+    sample, 80 pixels from this curve image are revealed while the rest are
+    set to ``0`` in the input. The full image is used as the training target.
     """
 
-    # Container for images before flattening
-    images = np.zeros((num_samples, IMAGE_SIZE, IMAGE_SIZE), dtype=np.float32)
-
+    # Build the fixed sine-wave image
+    base_image = np.zeros((IMAGE_SIZE, IMAGE_SIZE), dtype=np.float32)
     x_vals = np.linspace(0.0, np.pi, IMAGE_SIZE)
+    amplitude = IMAGE_SIZE * 0.4
+    center = IMAGE_SIZE / 2.0
+    for x_pixel, x in enumerate(x_vals):
+        y = amplitude * np.sin(x)
+        y_pos = center - y
+        lower = int(np.floor(y_pos))
+        upper = int(np.ceil(y_pos))
+        if 0 <= lower < IMAGE_SIZE:
+            base_image[lower, x_pixel] = 1.0
+        if 0 <= upper < IMAGE_SIZE:
+            base_image[upper, x_pixel] = 1.0
 
+    flat_image = base_image.reshape(NUM_PIXELS)
+
+    # Generate inputs by revealing a random subset of pixels
+    inputs = np.zeros((num_samples, NUM_PIXELS), dtype=np.float32)
     for i in range(num_samples):
-        amplitude = np.random.uniform(IMAGE_SIZE * 0.1, IMAGE_SIZE * 0.4)
-        scale = np.random.uniform(0.5, 2.0)
-        center = IMAGE_SIZE / 2.0
-        for x_pixel, x in enumerate(x_vals):
-            y = amplitude * np.sin(scale * x)
-            y_pos = center - y
-            lower = int(np.floor(y_pos))
-            upper = int(np.ceil(y_pos))
-            if 0 <= lower < IMAGE_SIZE:
-                images[i, lower, x_pixel] = 1.0
-            if 0 <= upper < IMAGE_SIZE:
-                images[i, upper, x_pixel] = 1.0
+        mask = np.zeros(NUM_PIXELS, dtype=np.float32)
+        indices = np.random.choice(NUM_PIXELS, MASK_PIXELS, replace=False)
+        mask[indices] = 1.0
+        inputs[i] = flat_image * mask
 
-    # Flatten images for the network
-    flat_images = images.reshape(num_samples, NUM_PIXELS)
-
-    # Create masked versions for inputs
-    masks = np.random.rand(num_samples, NUM_PIXELS) > MASK_FRACTION
-    inputs = flat_images * masks.astype(np.float32)
-    return inputs, flat_images
+    targets = np.repeat(flat_image[None, :], num_samples, axis=0)
+    return inputs, targets
 
 
 class TwoLayerNet(nn.Module):
