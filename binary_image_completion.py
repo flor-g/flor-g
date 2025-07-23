@@ -18,14 +18,41 @@ MASK_FRACTION = 0.3  # Fraction of pixels to mask in input
 
 
 def generate_dataset(num_samples: int):
-    """Generate synthetic binary images and corresponding masked inputs."""
-    # Random binary images as targets
-    images = np.random.randint(0, 2, size=(num_samples, NUM_PIXELS)).astype(np.float32)
+    """Generate sine-wave binary images and corresponding masked inputs.
+
+    Each sample contains a single sine curve drawn on a blank image. The curve
+    is defined by randomly chosen vertical amplitude and horizontal scaling
+    factors. Pixels on or nearest to the curve are set to ``1``. A fraction of
+    pixels specified by ``MASK_FRACTION`` are then removed from the image to
+    produce the masked input.
+    """
+
+    # Container for images before flattening
+    images = np.zeros((num_samples, IMAGE_SIZE, IMAGE_SIZE), dtype=np.float32)
+
+    x_vals = np.linspace(0.0, np.pi, IMAGE_SIZE)
+
+    for i in range(num_samples):
+        amplitude = np.random.uniform(IMAGE_SIZE * 0.1, IMAGE_SIZE * 0.4)
+        scale = np.random.uniform(0.5, 2.0)
+        center = IMAGE_SIZE / 2.0
+        for x_pixel, x in enumerate(x_vals):
+            y = amplitude * np.sin(scale * x)
+            y_pos = center - y
+            lower = int(np.floor(y_pos))
+            upper = int(np.ceil(y_pos))
+            if 0 <= lower < IMAGE_SIZE:
+                images[i, lower, x_pixel] = 1.0
+            if 0 <= upper < IMAGE_SIZE:
+                images[i, upper, x_pixel] = 1.0
+
+    # Flatten images for the network
+    flat_images = images.reshape(num_samples, NUM_PIXELS)
 
     # Create masked versions for inputs
     masks = np.random.rand(num_samples, NUM_PIXELS) > MASK_FRACTION
-    inputs = images * masks.astype(np.float32)
-    return inputs, images
+    inputs = flat_images * masks.astype(np.float32)
+    return inputs, flat_images
 
 
 class TwoLayerNet(nn.Module):
