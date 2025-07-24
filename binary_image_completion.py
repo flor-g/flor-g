@@ -66,15 +66,31 @@ def generate_dataset(num_samples: int):
     return inputs, targets
 
 
+def apply_random_mask(images: np.ndarray) -> np.ndarray:
+    """Create masked inputs from target images using random white pixel selection."""
+
+    masked = np.zeros_like(images)
+    for i, flat_image in enumerate(images):
+        mask = np.zeros(NUM_PIXELS, dtype=np.float32)
+        white_indices = np.flatnonzero(flat_image)
+        if len(white_indices) >= MASK_PIXELS:
+            reveal_indices = np.random.choice(white_indices, MASK_PIXELS, replace=False)
+        else:
+            reveal_indices = white_indices
+        mask[reveal_indices] = 1.0
+        masked[i] = flat_image * mask
+    return masked
+
+
 class TwoLayerNet(nn.Module):
     """Fully connected neural network with two hidden layers."""
 
     def __init__(self):
         super().__init__()
         self.fc1 = nn.Linear(NUM_PIXELS, HIDDEN_UNITS)
-        self.relu1 = nn.Tanh()
+        self.relu1 = nn.ReLU()
         self.fc2 = nn.Linear(HIDDEN_UNITS, HIDDEN_UNITS2)
-        self.relu2 = nn.Tanh()
+        self.relu2 = nn.ReLU()
         self.fc3 = nn.Linear(HIDDEN_UNITS2, NUM_PIXELS)
         self.sigmoid = nn.Sigmoid()
 
@@ -137,20 +153,13 @@ def visualize_results(model, input_image, target_image):
 
 if __name__ == "__main__":
     # Generate sine-wave dataset.
-    inputs, targets = generate_dataset(NUM_SAMPLES)
+    _, targets = generate_dataset(NUM_SAMPLES)
 
-    # Convert to PyTorch tensors
-    inputs_tensor = torch.from_numpy(inputs)
-    targets_tensor = torch.from_numpy(targets)
-
-    # Split into training and validation sets
+    # Split targets into training and validation sets
     train_size = int(0.8 * NUM_SAMPLES)
     val_size = NUM_SAMPLES - train_size
-    train_dataset = TensorDataset(inputs_tensor[:train_size], targets_tensor[:train_size])
-    val_dataset = TensorDataset(inputs_tensor[train_size:], targets_tensor[train_size:])
-
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
+    train_targets = targets[:train_size]
+    val_targets = targets[train_size:]
 
     # Initialize model, loss, optimizer
     model = TwoLayerNet()
@@ -159,12 +168,25 @@ if __name__ == "__main__":
 
     # Training loop
     for epoch in range(EPOCHS):
+        # Randomly mask inputs each epoch
+        train_inputs = torch.from_numpy(apply_random_mask(train_targets))
+        val_inputs = torch.from_numpy(apply_random_mask(val_targets))
+
+        train_dataset = TensorDataset(train_inputs, torch.from_numpy(train_targets))
+        val_dataset = TensorDataset(val_inputs, torch.from_numpy(val_targets))
+
+        train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
+
         train_loss = train(model, train_loader, criterion, optimizer)
         val_loss = evaluate(model, val_loader, criterion)
-        print(f"Epoch {epoch+1}/{EPOCHS} - Train Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f}")
+        print(
+            f"Epoch {epoch+1}/{EPOCHS} - Train Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f}"
+        )
 
     # Visualize results on a random validation sample
     idx = np.random.randint(0, val_size)
-    input_img = inputs[train_size + idx]
-    target_img = targets[train_size + idx]
+    masked = apply_random_mask(val_targets[idx : idx + 1])[0]
+    input_img = masked
+    target_img = val_targets[idx]
     visualize_results(model, input_img, target_img)
