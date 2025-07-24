@@ -11,6 +11,7 @@ IMAGE_SIZE = 100  # 100x100 images
 NUM_PIXELS = IMAGE_SIZE * IMAGE_SIZE
 NUM_SAMPLES = 80
 HIDDEN_UNITS = 512
+HIDDEN_UNITS2 = 256
 EPOCHS = 50
 BATCH_SIZE = 8
 LEARNING_RATE = 1e-3
@@ -66,19 +67,23 @@ def generate_dataset(num_samples: int):
 
 
 class TwoLayerNet(nn.Module):
-    """Simple two-layer fully connected neural network."""
+    """Fully connected neural network with two hidden layers."""
 
     def __init__(self):
         super().__init__()
         self.fc1 = nn.Linear(NUM_PIXELS, HIDDEN_UNITS)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(HIDDEN_UNITS, NUM_PIXELS)
+        self.relu1 = nn.ReLU()
+        self.fc2 = nn.Linear(HIDDEN_UNITS, HIDDEN_UNITS2)
+        self.relu2 = nn.ReLU()
+        self.fc3 = nn.Linear(HIDDEN_UNITS2, NUM_PIXELS)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x = self.fc1(x)
-        x = self.relu(x)
+        x = self.relu1(x)
         x = self.fc2(x)
+        x = self.relu2(x)
+        x = self.fc3(x)
         x = self.sigmoid(x)
         return x
 
