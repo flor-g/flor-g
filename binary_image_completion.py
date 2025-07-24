@@ -166,6 +166,10 @@ if __name__ == "__main__":
     criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
+    best_val_loss = float("inf")
+    best_weights = None
+    best_weights_path = "best_model.pth"
+
     # Training loop
     for epoch in range(EPOCHS):
         # Randomly mask inputs each epoch
@@ -180,9 +184,16 @@ if __name__ == "__main__":
 
         train_loss = train(model, train_loader, criterion, optimizer)
         val_loss = evaluate(model, val_loader, criterion)
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            best_weights = {k: v.cpu() for k, v in model.state_dict().items()}
+            torch.save(best_weights, best_weights_path)
         print(
             f"Epoch {epoch+1}/{EPOCHS} - Train Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f}"
         )
+
+    if best_weights is not None:
+        model.load_state_dict(torch.load(best_weights_path))
 
     # Visualize results on a random validation sample
     idx = np.random.randint(0, val_size)
