@@ -17,3 +17,6 @@ Run the binary image completion demo:
 ```bash
 python binary_image_completion.py
 ```
+
+The script saves the best-performing weights during training to
+`best_model.pth`.
