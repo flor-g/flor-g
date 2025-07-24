@@ -11,11 +11,12 @@ IMAGE_SIZE = 100  # 100x100 images
 NUM_PIXELS = IMAGE_SIZE * IMAGE_SIZE
 NUM_SAMPLES = 80
 HIDDEN_UNITS = 512
+HIDDEN_UNITS2 = 256
 EPOCHS = 50
 BATCH_SIZE = 8
 LEARNING_RATE = 1e-3
 MASK_PIXELS = 20  # Number of white pixels revealed in each input
-SEGMENT_WIDTH = np.pi  # Width of sine segment for each sample
+SEGMENT_WIDTH = 2*(np.pi)  # Width of sine segment for each sample
 
 
 def generate_dataset(num_samples: int):
@@ -36,7 +37,7 @@ def generate_dataset(num_samples: int):
     center = IMAGE_SIZE / 2.0
 
     for i in range(num_samples):
-        start = np.random.uniform(0.0, 2 * np.pi - SEGMENT_WIDTH)
+        start = np.random.uniform(0.0, 4 * np.pi - SEGMENT_WIDTH)
         x_vals = np.linspace(start, start + SEGMENT_WIDTH, IMAGE_SIZE)
 
         image = np.zeros((IMAGE_SIZE, IMAGE_SIZE), dtype=np.float32)
@@ -65,22 +66,65 @@ def generate_dataset(num_samples: int):
     return inputs, targets
 
 
+def apply_random_mask(images: np.ndarray) -> np.ndarray:
+    """Create masked inputs from target images using random white pixel selection."""
+
+    masked = np.zeros_like(images)
+    for i, flat_image in enumerate(images):
+        mask = np.zeros(NUM_PIXELS, dtype=np.float32)
+        white_indices = np.flatnonzero(flat_image)
+        if len(white_indices) >= MASK_PIXELS:
+            reveal_indices = np.random.choice(white_indices, MASK_PIXELS, replace=False)
+        else:
+            reveal_indices = white_indices
+        mask[reveal_indices] = 1.0
+        masked[i] = flat_image * mask
+    return masked
+
+
 class TwoLayerNet(nn.Module):
-    """Simple two-layer fully connected neural network."""
+    """Fully connected neural network with two hidden layers."""
 
     def __init__(self):
         super().__init__()
         self.fc1 = nn.Linear(NUM_PIXELS, HIDDEN_UNITS)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(HIDDEN_UNITS, NUM_PIXELS)
+        self.relu1 = nn.Tanh()
+        self.dropout1 = nn.Dropout(0.2)
+        self.fc2 = nn.Linear(HIDDEN_UNITS, HIDDEN_UNITS2)
+        self.relu2 = nn.Tanh()
+        self.dropout2 = nn.Dropout(0.2)
+        self.fc3 = nn.Linear(HIDDEN_UNITS2, NUM_PIXELS)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x = self.fc1(x)
-        x = self.relu(x)
+        x = self.relu1(x)
+        x = self.dropout1(x)
         x = self.fc2(x)
+        x = self.relu2(x)
+        x = self.dropout2(x)
+        x = self.fc3(x)
         x = self.sigmoid(x)
         return x
+
+
+def dice_loss(pred: torch.Tensor, target: torch.Tensor, smooth: float = 1e-6) -> torch.Tensor:
+    """Calculate Dice Loss for binary predictions.
+
+    Args:
+        pred: Tensor containing model predictions with values in ``[0, 1]``.
+        target: Tensor of ground truth labels with values ``0`` or ``1``.
+        smooth: Smoothing factor to avoid division by zero.
+
+    Returns:
+        Dice loss averaged over the batch.
+    """
+    pred_flat = pred.view(pred.size(0), -1)
+    target_flat = target.view(target.size(0), -1)
+    intersection = (pred_flat * target_flat).sum(dim=1)
+    union = pred_flat.sum(dim=1) + target_flat.sum(dim=1)
+    dice_score = (2.0 * intersection + smooth) / (union + smooth)
+    return 1.0 - dice_score.mean()
 
 
 def train(model, dataloader, criterion, optimizer):
@@ -132,34 +176,51 @@ def visualize_results(model, input_image, target_image):
 
 if __name__ == "__main__":
     # Generate sine-wave dataset.
-    inputs, targets = generate_dataset(NUM_SAMPLES)
+    _, targets = generate_dataset(NUM_SAMPLES)
 
-    # Convert to PyTorch tensors
-    inputs_tensor = torch.from_numpy(inputs)
-    targets_tensor = torch.from_numpy(targets)
-
-    # Split into training and validation sets
+    # Split targets into training and validation sets
     train_size = int(0.8 * NUM_SAMPLES)
     val_size = NUM_SAMPLES - train_size
-    train_dataset = TensorDataset(inputs_tensor[:train_size], targets_tensor[:train_size])
-    val_dataset = TensorDataset(inputs_tensor[train_size:], targets_tensor[train_size:])
-
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
+    train_targets = targets[:train_size]
+    val_targets = targets[train_size:]
 
     # Initialize model, loss, optimizer
     model = TwoLayerNet()
-    criterion = nn.BCELoss()
+    criterion = dice_loss
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+    best_val_loss = float("inf")
+    best_weights = None
+    best_weights_path = "best_model.pth"
 
     # Training loop
     for epoch in range(EPOCHS):
+        # Randomly mask inputs each epoch
+        train_inputs = torch.from_numpy(apply_random_mask(train_targets))
+        val_inputs = torch.from_numpy(apply_random_mask(val_targets))
+
+        train_dataset = TensorDataset(train_inputs, torch.from_numpy(train_targets))
+        val_dataset = TensorDataset(val_inputs, torch.from_numpy(val_targets))
+
+        train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
+
         train_loss = train(model, train_loader, criterion, optimizer)
         val_loss = evaluate(model, val_loader, criterion)
-        print(f"Epoch {epoch+1}/{EPOCHS} - Train Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f}")
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            best_weights = {k: v.cpu() for k, v in model.state_dict().items()}
+            torch.save(best_weights, best_weights_path)
+        print(
+            f"Epoch {epoch+1}/{EPOCHS} - Train Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f}"
+        )
+
+    if best_weights is not None:
+        model.load_state_dict(torch.load(best_weights_path))
 
     # Visualize results on a random validation sample
     idx = np.random.randint(0, val_size)
-    input_img = inputs[train_size + idx]
-    target_img = targets[train_size + idx]
+    masked = apply_random_mask(val_targets[idx : idx + 1])[0]
+    input_img = masked
+    target_img = val_targets[idx]
     visualize_results(model, input_img, target_img)
