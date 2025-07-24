@@ -14,7 +14,7 @@ HIDDEN_UNITS = 512
 EPOCHS = 50
 BATCH_SIZE = 8
 LEARNING_RATE = 1e-3
-MASK_PIXELS = 80  # Number of white pixels revealed in each input
+MASK_PIXELS = 20  # Number of white pixels revealed in each input
 SEGMENT_WIDTH = np.pi  # Width of sine segment for each sample
 
 
@@ -32,7 +32,7 @@ def generate_dataset(num_samples: int):
     inputs = np.zeros((num_samples, NUM_PIXELS), dtype=np.float32)
     targets = np.zeros((num_samples, NUM_PIXELS), dtype=np.float32)
 
-    amplitude = IMAGE_SIZE * 0.4
+    amplitude = IMAGE_SIZE * (0.3 + 0.2 * np.random.rand())
     center = IMAGE_SIZE / 2.0
 
     for i in range(num_samples):
