@@ -104,6 +104,25 @@ class TwoLayerNet(nn.Module):
         return x
 
 
+def dice_loss(pred: torch.Tensor, target: torch.Tensor, smooth: float = 1e-6) -> torch.Tensor:
+    """Calculate Dice Loss for binary predictions.
+
+    Args:
+        pred: Tensor containing model predictions with values in ``[0, 1]``.
+        target: Tensor of ground truth labels with values ``0`` or ``1``.
+        smooth: Smoothing factor to avoid division by zero.
+
+    Returns:
+        Dice loss averaged over the batch.
+    """
+    pred_flat = pred.view(pred.size(0), -1)
+    target_flat = target.view(target.size(0), -1)
+    intersection = (pred_flat * target_flat).sum(dim=1)
+    union = pred_flat.sum(dim=1) + target_flat.sum(dim=1)
+    dice_score = (2.0 * intersection + smooth) / (union + smooth)
+    return 1.0 - dice_score.mean()
+
+
 def train(model, dataloader, criterion, optimizer):
     model.train()
     total_loss = 0.0
@@ -163,7 +182,7 @@ if __name__ == "__main__":
 
     # Initialize model, loss, optimizer
     model = TwoLayerNet()
-    criterion = nn.BCELoss()
+    criterion = dice_loss
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     best_val_loss = float("inf")
