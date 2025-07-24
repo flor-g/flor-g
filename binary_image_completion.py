@@ -16,7 +16,7 @@ EPOCHS = 50
 BATCH_SIZE = 8
 LEARNING_RATE = 1e-3
 MASK_PIXELS = 20  # Number of white pixels revealed in each input
-SEGMENT_WIDTH = np.pi  # Width of sine segment for each sample
+SEGMENT_WIDTH = 2*(np.pi)  # Width of sine segment for each sample
 
 
 def generate_dataset(num_samples: int):
@@ -37,7 +37,7 @@ def generate_dataset(num_samples: int):
     center = IMAGE_SIZE / 2.0
 
     for i in range(num_samples):
-        start = np.random.uniform(0.0, 2 * np.pi - SEGMENT_WIDTH)
+        start = np.random.uniform(0.0, 4 * np.pi - SEGMENT_WIDTH)
         x_vals = np.linspace(start, start + SEGMENT_WIDTH, IMAGE_SIZE)
 
         image = np.zeros((IMAGE_SIZE, IMAGE_SIZE), dtype=np.float32)
@@ -88,9 +88,9 @@ class TwoLayerNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.fc1 = nn.Linear(NUM_PIXELS, HIDDEN_UNITS)
-        self.relu1 = nn.ReLU()
+        self.relu1 = nn.Tanh()
         self.fc2 = nn.Linear(HIDDEN_UNITS, HIDDEN_UNITS2)
-        self.relu2 = nn.ReLU()
+        self.relu2 = nn.Tanh()
         self.fc3 = nn.Linear(HIDDEN_UNITS2, NUM_PIXELS)
         self.sigmoid = nn.Sigmoid()
 
