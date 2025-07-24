@@ -89,16 +89,20 @@ class TwoLayerNet(nn.Module):
         super().__init__()
         self.fc1 = nn.Linear(NUM_PIXELS, HIDDEN_UNITS)
         self.relu1 = nn.Tanh()
+        self.dropout1 = nn.Dropout(0.2)
         self.fc2 = nn.Linear(HIDDEN_UNITS, HIDDEN_UNITS2)
         self.relu2 = nn.Tanh()
+        self.dropout2 = nn.Dropout(0.2)
         self.fc3 = nn.Linear(HIDDEN_UNITS2, NUM_PIXELS)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x = self.fc1(x)
         x = self.relu1(x)
+        x = self.dropout1(x)
         x = self.fc2(x)
         x = self.relu2(x)
+        x = self.dropout2(x)
         x = self.fc3(x)
         x = self.sigmoid(x)
         return x
