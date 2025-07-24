@@ -72,9 +72,9 @@ class TwoLayerNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.fc1 = nn.Linear(NUM_PIXELS, HIDDEN_UNITS)
-        self.relu1 = nn.ReLU()
+        self.relu1 = nn.Tanh()
         self.fc2 = nn.Linear(HIDDEN_UNITS, HIDDEN_UNITS2)
-        self.relu2 = nn.ReLU()
+        self.relu2 = nn.Tanh()
         self.fc3 = nn.Linear(HIDDEN_UNITS2, NUM_PIXELS)
         self.sigmoid = nn.Sigmoid()
 
