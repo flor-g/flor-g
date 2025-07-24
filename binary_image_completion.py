@@ -83,24 +83,29 @@ def apply_random_mask(images: np.ndarray) -> np.ndarray:
 
 
 class TwoLayerNet(nn.Module):
-    """Fully connected neural network with two hidden layers."""
+    """Convolutional autoencoder using Tanh activations."""
 
     def __init__(self):
         super().__init__()
-        self.fc1 = nn.Linear(NUM_PIXELS, HIDDEN_UNITS)
-        self.relu1 = nn.Tanh()
-        self.fc2 = nn.Linear(HIDDEN_UNITS, HIDDEN_UNITS2)
-        self.relu2 = nn.Tanh()
-        self.fc3 = nn.Linear(HIDDEN_UNITS2, NUM_PIXELS)
-        self.sigmoid = nn.Sigmoid()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=3, padding=1),
+            nn.Tanh(),
+            nn.MaxPool2d(2, 2),
+            nn.Conv2d(16, 32, kernel_size=3, padding=1),
+            nn.Tanh(),
+            nn.MaxPool2d(2, 2),
+        )
+
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(32, 16, kernel_size=2, stride=2),
+            nn.Tanh(),
+            nn.ConvTranspose2d(16, 1, kernel_size=2, stride=2),
+            nn.Tanh(),
+        )
 
     def forward(self, x):
-        x = self.fc1(x)
-        x = self.relu1(x)
-        x = self.fc2(x)
-        x = self.relu2(x)
-        x = self.fc3(x)
-        x = self.sigmoid(x)
+        x = self.encoder(x)
+        x = self.decoder(x)
         return x
 
 
@@ -130,9 +135,11 @@ def evaluate(model, dataloader, criterion):
 
 def visualize_results(model, input_image, target_image):
     model.eval()
+    inp = torch.from_numpy(input_image.reshape(1, 1, IMAGE_SIZE, IMAGE_SIZE))
+    inp = inp * 2 - 1  # scale to [-1, 1]
     with torch.no_grad():
-        output = model(torch.from_numpy(input_image).unsqueeze(0)).squeeze(0).numpy()
-    output_image = (output > 0.5).astype(np.float32)  # Threshold for binary output
+        output = model(inp).squeeze(0).squeeze(0).numpy()
+    output_image = (output > 0).astype(np.float32)  # Threshold for binary output
 
     fig, axes = plt.subplots(1, 3, figsize=(9, 3))
     axes[0].imshow(target_image.reshape(IMAGE_SIZE, IMAGE_SIZE), cmap='gray')
@@ -163,17 +170,29 @@ if __name__ == "__main__":
 
     # Initialize model, loss, optimizer
     model = TwoLayerNet()
-    criterion = nn.BCELoss()
+    criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+    train_targets_norm = (train_targets * 2 - 1).reshape(-1, 1, IMAGE_SIZE, IMAGE_SIZE)
+    val_targets_norm = (val_targets * 2 - 1).reshape(-1, 1, IMAGE_SIZE, IMAGE_SIZE)
 
     # Training loop
     for epoch in range(EPOCHS):
         # Randomly mask inputs each epoch
-        train_inputs = torch.from_numpy(apply_random_mask(train_targets))
-        val_inputs = torch.from_numpy(apply_random_mask(val_targets))
+        train_inputs = apply_random_mask(train_targets)
+        val_inputs = apply_random_mask(val_targets)
 
-        train_dataset = TensorDataset(train_inputs, torch.from_numpy(train_targets))
-        val_dataset = TensorDataset(val_inputs, torch.from_numpy(val_targets))
+        train_inputs = (train_inputs * 2 - 1).reshape(-1, 1, IMAGE_SIZE, IMAGE_SIZE)
+        val_inputs = (val_inputs * 2 - 1).reshape(-1, 1, IMAGE_SIZE, IMAGE_SIZE)
+
+        train_dataset = TensorDataset(
+            torch.from_numpy(train_inputs),
+            torch.from_numpy(train_targets_norm),
+        )
+        val_dataset = TensorDataset(
+            torch.from_numpy(val_inputs),
+            torch.from_numpy(val_targets_norm),
+        )
 
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
         val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
