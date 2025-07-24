@@ -15,7 +15,7 @@ HIDDEN_UNITS2 = 256
 EPOCHS = 50
 BATCH_SIZE = 8
 LEARNING_RATE = 1e-3
-MASK_PIXELS = 20  # Number of white pixels revealed in each input
+MASK_PIXELS = 10  # Number of white pixels revealed in each input
 SEGMENT_WIDTH = 2*(np.pi)  # Width of sine segment for each sample
 
 
