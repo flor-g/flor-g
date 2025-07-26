@@ -83,29 +83,63 @@ def apply_random_mask(images: np.ndarray) -> np.ndarray:
 
 
 class TwoLayerNet(nn.Module):
-    """Fully connected neural network with two hidden layers."""
+    """Convolutional autoencoder for binary image completion."""
 
     def __init__(self):
         super().__init__()
-        self.fc1 = nn.Linear(NUM_PIXELS, HIDDEN_UNITS)
-        self.relu1 = nn.Tanh()
-        self.dropout1 = nn.Dropout(0.2)
-        self.fc2 = nn.Linear(HIDDEN_UNITS, HIDDEN_UNITS2)
-        self.relu2 = nn.Tanh()
-        self.dropout2 = nn.Dropout(0.2)
-        self.fc3 = nn.Linear(HIDDEN_UNITS2, NUM_PIXELS)
+        # Encoder downsamples the 100x100 input to 32 feature maps of size 25x25
+        self.encoder = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=3, stride=2, padding=1),
+            nn.Tanh(),
+            nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),
+            nn.Tanh(),
+        )
+
+        # Flatten encoder output and pass through dense bottleneck
+        self.enc_flat_features = 32 * 25 * 25
+        self.flatten = nn.Flatten()
+        self.fc_enc = nn.Sequential(
+            nn.Linear(self.enc_flat_features, 256),
+            nn.Tanh(),
+            nn.Linear(256, self.enc_flat_features),
+            nn.Tanh(),
+        )
+
+        # Decoder upsamples back to the original spatial resolution
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(
+                32, 16, kernel_size=3, stride=2, padding=1, output_padding=1
+            ),
+            nn.Tanh(),
+            nn.ConvTranspose2d(
+                16, 1, kernel_size=3, stride=2, padding=1, output_padding=1
+            ),
+        )
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        x = self.fc1(x)
-        x = self.relu1(x)
-        x = self.dropout1(x)
-        x = self.fc2(x)
-        x = self.relu2(x)
-        x = self.dropout2(x)
-        x = self.fc3(x)
+        # Input comes in flattened; reshape for convolutional layers
+        x = x.view(-1, 1, IMAGE_SIZE, IMAGE_SIZE)
+
+        # Encode to feature map representation
+        enc_out = self.encoder(x)
+
+        # Bottleneck fully connected layers
+        flat = self.flatten(enc_out)
+        flat = self.fc_enc(flat)
+
+        # Expand back to feature map size
+        flat = flat.view(-1, 32, 25, 25)
+
+        # Skip connection from encoder output to decoder input
+        dec_in = flat + enc_out
+
+        # Decode to reconstructed image
+        x = self.decoder(dec_in)
         x = self.sigmoid(x)
-        return x
+
+        # Return flattened output for loss calculation
+        return x.view(-1, NUM_PIXELS)
 
 
 def dice_loss(pred: torch.Tensor, target: torch.Tensor, smooth: float = 1e-6) -> torch.Tensor:
