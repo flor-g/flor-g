@@ -1,19 +1,1 @@
-# flor-g Playground
 
-This is a playground for simple neural network experiments.
-
-## Installation
-
-Make sure Python 3 is installed. Then install the required packages:
-
-```bash
-pip install -r requirements.txt
-```
-
-## Usage
-
-Run the binary image completion demo:
-
-```bash
-python binary_image_completion.py
-```
