@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Personal Site</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --background: #f6f6f6;
+      --foreground: #111;
+      --accent: #222;
+      --muted: #d0d0d0;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: #111;
+        --foreground: #f6f6f6;
+        --accent: #f6f6f6;
+        --muted: #333;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      padding: 3rem 1.5rem 4rem;
+    }
+
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      max-width: 680px;
+      margin: 0 auto;
+      align-items: flex-start;
+    }
+
+    header h1 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      letter-spacing: -0.04em;
+      font-weight: 600;
+    }
+
+    nav {
+      max-width: 680px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+
+    nav a {
+      display: block;
+      text-decoration: none;
+      border: 1px solid var(--muted);
+      border-radius: 999px;
+      padding: 0.75rem 1.25rem;
+      text-align: center;
+      color: var(--foreground);
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    nav a:focus,
+    nav a:hover {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: var(--background);
+    }
+
+    main {
+      flex: 1;
+      max-width: 680px;
+      margin: 0 auto;
+      display: grid;
+      gap: 2.5rem;
+    }
+
+    section {
+      border: 1px solid var(--muted);
+      border-radius: 20px;
+      padding: 1.75rem;
+      display: grid;
+      gap: 1.5rem;
+      min-height: 180px;
+    }
+
+    section header {
+      margin: 0;
+      align-items: flex-start;
+    }
+
+    section h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .slots {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .slot {
+      border: 1px dashed var(--muted);
+      border-radius: 12px;
+      min-height: 48px;
+    }
+
+    footer {
+      max-width: 680px;
+      margin: 0 auto;
+      border-top: 1px solid var(--muted);
+      padding-top: 1.5rem;
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Your Name</h1>
+  </header>
+
+  <nav>
+    <a href="#cv">CV</a>
+    <a href="#writings">Casual Writings</a>
+    <a href="#papers">Papers</a>
+  </nav>
+
+  <main>
+    <section id="cv">
+      <header>
+        <h2>CV</h2>
+      </header>
+      <div class="slots">
+        <div class="slot" aria-label="Add CV entry"></div>
+        <div class="slot" aria-label="Add CV entry"></div>
+        <div class="slot" aria-label="Add CV entry"></div>
+      </div>
+    </section>
+
+    <section id="writings">
+      <header>
+        <h2>Casual Writings</h2>
+      </header>
+      <div class="slots">
+        <div class="slot" aria-label="Add writing link"></div>
+        <div class="slot" aria-label="Add writing link"></div>
+        <div class="slot" aria-label="Add writing link"></div>
+      </div>
+    </section>
+
+    <section id="papers">
+      <header>
+        <h2>Papers</h2>
+      </header>
+      <div class="slots">
+        <div class="slot" aria-label="Add paper link"></div>
+        <div class="slot" aria-label="Add paper link"></div>
+        <div class="slot" aria-label="Add paper link"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer></footer>
+</body>
+</html>
